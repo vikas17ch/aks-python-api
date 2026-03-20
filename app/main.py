@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import psycopg2
 import os
 
-app = FastAPI(title="Vikas Automated API")
+app = FastAPI(title="Vikas User Manager")
 
 def get_db_connection():
     return psycopg2.connect(
@@ -29,18 +29,45 @@ def startup_db():
     conn.close()
 
 @app.get("/")
-def read_root():
-    return {"message": "Vikas: Senior SRE Automation Complete! 🚀"}
+def home():
+    return {
+        "status": "Online 🚀",
+        "commands": {
+            "View Users": "/users",
+            "Add User": "/add?name=Vikas",
+            "Delete User": "/delete?id=1"
+        }
+    }
+
+# NEW: Add a user via GET (Easy for browser testing)
+@app.get("/add")
+def add_user(name: str):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users (name) VALUES (%s) RETURNING id;", (name,))
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": f"User {name} added with ID {new_id} ✅"}
+
+# NEW: Delete a user by ID
+@app.get("/delete")
+def delete_user(id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id = %s;", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": f"User ID {id} deleted 🗑️"}
 
 @app.get("/users")
 def get_users():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users ORDER BY created_at DESC;")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        return {"users": rows}
-    except Exception as e:
-        return {"error": str(e)}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, created_at FROM users ORDER BY id ASC;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"database_records": rows}
