@@ -74,3 +74,14 @@ def get_users():
     cur.close()
     conn.close()
     return {"database_records": rows}
+# 7. API Route: Search all users
+@app.get("/search")
+def search_user(name: str):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Use ILIKE for case-insensitive searching
+    cur.execute("SELECT id, name, created_at FROM users WHERE name ILIKE %s;", (f"%{name}%",))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"results": rows}
