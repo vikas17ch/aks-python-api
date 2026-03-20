@@ -30,7 +30,7 @@ def startup_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "Automation Successful!", "hint": "Visit /users to see data"}
+    return {"message": "Vikas: Senior SRE Automation Complete! 🚀"}
 
 @app.get("/users")
 def get_users():
