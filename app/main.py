@@ -1,9 +1,16 @@
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import psycopg2
 import os
 
-app = FastAPI(title="Vikas User Manager")
+app = FastAPI(title="Vikas User Manager UI")
 
+# 1. Mount the 'static' folder so your HTML/CSS/JS is accessible
+# This expects a folder named 'static' to exist in your Docker image
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Database connection helper
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
@@ -13,6 +20,7 @@ def get_db_connection():
         sslmode='require'
     )
 
+# 2. Create the table automatically on startup
 @app.on_event("startup")
 def startup_db():
     conn = get_db_connection()
@@ -28,18 +36,12 @@ def startup_db():
     cur.close()
     conn.close()
 
+# 3. Serve the UI (Dashboard) at the root URL
 @app.get("/")
-def home():
-    return {
-        "status": "Online 🚀",
-        "commands": {
-            "View Users": "/users",
-            "Add User": "/add?name=Vikas",
-            "Delete User": "/delete?id=1"
-        }
-    }
+def read_index():
+    return FileResponse('static/index.html')
 
-# NEW: Add a user via GET (Easy for browser testing)
+# 4. API Route: Add a user
 @app.get("/add")
 def add_user(name: str):
     conn = get_db_connection()
@@ -49,9 +51,9 @@ def add_user(name: str):
     conn.commit()
     cur.close()
     conn.close()
-    return {"message": f"User {name} added with ID {new_id} ✅"}
+    return {"message": f"User {name} added!", "id": new_id}
 
-# NEW: Delete a user by ID
+# 5. API Route: Delete a user
 @app.get("/delete")
 def delete_user(id: int):
     conn = get_db_connection()
@@ -60,8 +62,9 @@ def delete_user(id: int):
     conn.commit()
     cur.close()
     conn.close()
-    return {"message": f"User ID {id} deleted 🗑️"}
+    return {"message": f"User {id} deleted."}
 
+# 6. API Route: List all users
 @app.get("/users")
 def get_users():
     conn = get_db_connection()
