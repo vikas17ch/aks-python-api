@@ -1,0 +1,44 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  ACR_NAME: vikasregk4e2
+  AKS_NAME: python-api-cluster
+  RG_NAME: aks-python-pg-rg
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build & Push to ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/python-api:${{ github.sha }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/python-api:${{ github.sha }}
+
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RG_NAME }}
+          cluster-name: ${{ env.AKS_NAME }}
+
+      - name: Deploy to AKS
+        uses: azure/k8s-deploy@v4
+        with:
+          manifests: |
+            deployment.yaml
+          images: |
+            ${{ env.ACR_NAME }}.azurecr.io/python-api:${{ github.sha }}
+          imagepullsecrets: |
+            acr-secret
